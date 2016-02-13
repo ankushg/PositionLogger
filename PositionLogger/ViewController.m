@@ -40,7 +40,7 @@
     _f  = [self openFileForWriting];
     if (!_f)
         NSAssert(_f,@"Couldn't open file for writing.");
-    [self logLineToDataFile:@"Time,Lat,Lon,Altitude,Accuracy,Heading,Speed,Battery\n"];
+    [self logLineToDataFile:@"Time,Lat,Lon,Altitude,HorizontalAccuracy,VerticalAccuracy,Heading,Speed,Battery\n"];
     // Do any additional setup after loading the view, typically from a nib.
 }
 
@@ -76,15 +76,26 @@
         NSAssert(_f,@"Couldn't open file for writing.");
 }
 
-//TODO: Implement me
 -(void)startRecordingLocationWithAccuracy:(LocationAccuracy)acc {
-    // your code goes here
+    NSLog(@"Location Accuracy set to %u", acc);
+    switch(acc){
+        //TODO: determine which constants to use for which accuracy levels
+        case GPS:
+            _locmgr.desiredAccuracy = kCLLocationAccuracyBestForNavigation;
+            break;
+        case Cellular:
+            _locmgr.desiredAccuracy = kCLLocationAccuracyThreeKilometers;
+            break;
+        case WiFi:
+            _locmgr.desiredAccuracy = kCLLocationAccuracyHundredMeters;
+            break;
+    }
+    
+    [_locmgr startUpdatingLocation];
 }
 
-//TODO: Implement me
 -(void)stopRecordingLocationWithAccuracy {
-    // your code goes here
-
+    [_locmgr stopUpdatingLocation];
 }
 
 -(IBAction)hitRecordStopButton:(UIButton *)b {
@@ -148,13 +159,19 @@
 
 #pragma mark - CLLocationManagerDelegate Methods -
 
-//TODO: Implement me
-- (void)locationManager:(CLLocationManager *)manager
-     didUpdateLocations:(NSArray<CLLocation *> *)locations
+- (void)locationManager:(CLLocationManager *)manager didUpdateLocations: (NSArray<CLLocation *> *)locations
 {
-    // your code goes here
+    for (CLLocation* loc in locations) {
+        NSString* line = [NSString stringWithFormat: @"%f,%f,%f,%f,%f,%f,%f,%f,%f\n", [loc.timestamp timeIntervalSince1970], loc.coordinate.latitude, loc.coordinate.longitude, loc.altitude, loc.horizontalAccuracy, loc.verticalAccuracy, loc.course, loc.speed, [[UIDevice currentDevice] batteryLevel]];
+        
+        [self logLineToDataFile:line];
+    }
 }
 
+- (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error
+{
+    NSLog(@"Error fetching location %@, %@", error, [error userInfo]);
+}
 
 #pragma mark - MFMailComposeViewControllerDelegate Methods -
 
